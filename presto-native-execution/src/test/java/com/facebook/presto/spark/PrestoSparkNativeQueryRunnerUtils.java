@@ -18,7 +18,6 @@ import com.facebook.presto.hive.metastore.Database;
 import com.facebook.presto.hive.metastore.ExtendedHiveMetastore;
 import com.facebook.presto.nativeworker.PrestoNativeQueryRunnerUtils;
 import com.facebook.presto.spark.execution.nativeprocess.NativeExecutionModule;
-import com.facebook.presto.spark.execution.property.NativeExecutionConnectorConfig;
 import com.facebook.presto.spi.security.PrincipalType;
 import com.facebook.presto.testing.QueryRunner;
 import com.google.common.collect.ImmutableList;
@@ -80,7 +79,6 @@ public class PrestoSparkNativeQueryRunnerUtils
                 .put("catalog.config-dir", "/")
                 .put("task.info-update-interval", "100ms")
                 .put("spark.initial-partition-count", "1")
-                .put("register-test-functions", "true")
                 .put("native-execution-program-arguments", "--logtostderr=1 --minloglevel=3")
                 .put("spark.partition-count-auto-tune-enabled", "false");
 
@@ -125,7 +123,8 @@ public class PrestoSparkNativeQueryRunnerUtils
         return createRunner(
                 "tpchstandard",
                 new NativeExecutionModule(
-                        Optional.of(new NativeExecutionConnectorConfig().setConnectorName("tpch"))));
+                        Optional.of(
+                                ImmutableMap.of("hive", ImmutableMap.of("connector.name", "tpch")))));
     }
 
     public static PrestoSparkQueryRunner createRunner(String defaultCatalog, Optional<Path> baseDir, Map<String, String> additionalConfigProperties, Map<String, String> additionalSparkProperties, ImmutableList<Module> nativeModules)

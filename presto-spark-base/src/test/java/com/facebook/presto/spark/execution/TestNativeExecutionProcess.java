@@ -22,11 +22,12 @@ import com.facebook.presto.spark.classloader_interface.PrestoSparkFatalException
 import com.facebook.presto.spark.execution.http.TestPrestoSparkHttpClient;
 import com.facebook.presto.spark.execution.nativeprocess.NativeExecutionProcess;
 import com.facebook.presto.spark.execution.nativeprocess.NativeExecutionProcessFactory;
-import com.facebook.presto.spark.execution.property.NativeExecutionConnectorConfig;
+import com.facebook.presto.spark.execution.property.NativeExecutionCatalogProperties;
 import com.facebook.presto.spark.execution.property.NativeExecutionNodeConfig;
 import com.facebook.presto.spark.execution.property.NativeExecutionSystemConfig;
 import com.facebook.presto.spark.execution.property.PrestoSparkWorkerProperty;
 import com.facebook.presto.sql.analyzer.FeaturesConfig;
+import com.google.common.collect.ImmutableMap;
 import org.testng.annotations.Test;
 
 import java.util.concurrent.ScheduledExecutorService;
@@ -87,9 +88,9 @@ public class TestNativeExecutionProcess
         TaskId taskId = new TaskId("testid", 0, 0, 0, 0);
         ScheduledExecutorService errorScheduler = newScheduledThreadPool(4);
         PrestoSparkWorkerProperty workerProperty = new PrestoSparkWorkerProperty(
-                new NativeExecutionConnectorConfig(),
+                new NativeExecutionCatalogProperties(ImmutableMap.of()),
                 new NativeExecutionNodeConfig(),
-                new NativeExecutionSystemConfig());
+                new NativeExecutionSystemConfig(ImmutableMap.of()));
         NativeExecutionProcessFactory factory = new NativeExecutionProcessFactory(
                 new TestPrestoSparkHttpClient.TestingOkHttpClient(
                         errorScheduler,

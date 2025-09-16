@@ -61,7 +61,6 @@
         <dep.lucene.version>8.11.3</dep.lucene.version>
         <dep.assertj-core.version>3.8.0</dep.assertj-core.version>
         <dep.parquet.version>1.13.1</dep.parquet.version>
-        <dep.nexus-staging-plugin.version>1.6.8</dep.nexus-staging-plugin.version>
         <dep.asm.version>9.7.1</dep.asm.version>
         <dep.gcs.version>1.9.17</dep.gcs.version>
         <dep.alluxio.version>313</dep.alluxio.version>
@@ -90,8 +89,8 @@
         <dep.commons.lang3.version>3.18.0</dep.commons.lang3.version>
         <dep.guice.version>6.0.0</dep.guice.version>
         <dep.arrow.version>17.0.0</dep.arrow.version>
-
-        <dep.pos.classloader.module-name.suffix>2</dep.pos.classloader.module-name.suffix>
+        <dep.mariadb.version>3.5.4</dep.mariadb.version>
+        <dep.spark.version>2.0.2-6</dep.spark.version>
 
         <!--
           America/Bahia_Banderas has:
@@ -108,6 +107,7 @@
         <air.javadoc.lint>-missing</air.javadoc.lint>
         <dep.commons.codec.version>1.17.1</dep.commons.codec.version>
         <aws.sdk.version>2.32.9</aws.sdk.version>
+        <release.autoPublish>true</release.autoPublish>
     </properties>
 
     <modules>
@@ -153,6 +153,7 @@
         <module>presto-parser</module>
         <module>presto-main-base</module>
         <module>presto-main</module>
+        <module>presto-built-in-worker-function-tools</module>
         <module>presto-ml</module>
         <module>presto-geospatial-toolkit</module>
         <module>presto-benchmark</module>
@@ -170,7 +171,9 @@
         <module>presto-plugin-toolkit</module>
         <module>presto-resource-group-managers</module>
         <module>presto-password-authenticators</module>
-        <module>presto-session-property-managers</module>
+        <module>presto-session-property-managers-common</module>
+        <module>presto-db-session-property-manager</module>
+        <module>presto-file-session-property-manager</module>
         <module>presto-benchto-benchmarks</module>
         <module>presto-thrift-api</module>
         <module>presto-thrift-testing-server</module>
@@ -220,7 +223,8 @@
         <module>presto-function-server</module>
         <module>presto-router-example-plugin-scheduler</module>
         <module>presto-plan-checker-router-plugin</module>
-        <module>presto-spark-classloader-spark${dep.pos.classloader.module-name.suffix}</module>
+        <module>presto-sql-invoked-functions-plugin</module>
+        <module>presto-native-sql-invoked-functions-plugin</module>
     </modules>
 
     <dependencyManagement>
@@ -340,7 +344,26 @@
 
             <dependency>
                 <groupId>com.facebook.presto</groupId>
-                <artifactId>presto-session-property-managers</artifactId>
+                <artifactId>presto-session-property-managers-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.facebook.presto</groupId>
+                <artifactId>presto-session-property-managers-common</artifactId>
+                <version>${project.version}</version>
+                <type>test-jar</type>
+            </dependency>
+
+            <dependency>
+                <groupId>com.facebook.presto</groupId>
+                <artifactId>presto-db-session-property-manager</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.facebook.presto</groupId>
+                <artifactId>presto-file-session-property-manager</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -817,6 +840,12 @@
 
             <dependency>
                 <groupId>com.facebook.presto</groupId>
+                <artifactId>presto-built-in-worker-function-tools</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.facebook.presto</groupId>
                 <artifactId>presto-main-base</artifactId>
                 <version>${project.version}</version>
                 <type>test-jar</type>
@@ -916,12 +945,6 @@
 
             <dependency>
                 <groupId>com.facebook.presto</groupId>
-                <artifactId>presto-spark-classloader-spark${dep.pos.classloader.module-name.suffix}</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.facebook.presto</groupId>
                 <artifactId>presto-spark</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -955,6 +978,13 @@
                 <groupId>com.facebook.presto</groupId>
                 <artifactId>presto-spark-package</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.facebook.presto.spark</groupId>
+                <artifactId>spark-core</artifactId>
+                <version>${dep.spark.version}</version>
+                <scope>provided</scope>
             </dependency>
 
             <dependency>
@@ -2509,13 +2539,6 @@
             </dependency>
 
             <dependency>
-                <groupId>com.facebook.presto.spark</groupId>
-                <artifactId>spark-core</artifactId>
-                <version>2.0.2-6</version>
-                <scope>provided</scope>
-            </dependency>
-
-            <dependency>
                 <groupId>com.clearspring.analytics</groupId>
                 <artifactId>stream</artifactId>
                 <version>2.9.5</version>
@@ -2671,6 +2694,11 @@
                 <version>${dep.arrow.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>org.mariadb.jdbc</groupId>
+                <artifactId>mariadb-java-client</artifactId>
+                <version>${dep.mariadb.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -2788,18 +2816,6 @@
                     <artifactId>maven-release-plugin</artifactId>
                     <configuration>
                         <preparationGoals>clean verify -DskipTests</preparationGoals>
-                    </configuration>
-                </plugin>
-
-                <plugin>
-                    <groupId>org.sonatype.plugins</groupId>
-                    <artifactId>nexus-staging-maven-plugin</artifactId>
-                    <version>${dep.nexus-staging-plugin.version}</version>
-                    <!-- This plugin is not registered as an extension because it will fail to activate
-                         concurrently with the Maven Provisio plugin, as that has its own deployment lifecycle -->
-                    <configuration>
-                        <serverId>ossrh</serverId>
-                        <nexusUrl>https://oss.sonatype.org/</nexusUrl>
                     </configuration>
                 </plugin>
 
@@ -3021,7 +3037,7 @@
                         <extensions>true</extensions>
                         <configuration>
                             <publishingServerId>ossrh</publishingServerId>
-                            <autoPublish>true</autoPublish>
+                            <autoPublish>${release.autoPublish}</autoPublish>
                             <waitUntil>validated</waitUntil>
                         </configuration>
                     </plugin>
@@ -3140,6 +3156,78 @@
             </build>
         </profile>
         <profile>
+            <id>spark2</id>
+
+            <activation>
+                <activeByDefault>true</activeByDefault>
+                <property>
+                    <name>!spark-version</name>
+                </property>
+            </activation>
+
+            <properties>
+                <dep.spark.version>2.0.2-6</dep.spark.version>
+            </properties>
+
+            <modules>
+                <module>presto-spark-classloader-spark2</module>
+            </modules>
+
+            <build>
+                <pluginManagement>
+                    <plugins>
+                        <plugin>
+                            <groupId>org.apache.maven.plugins</groupId>
+                            <artifactId>maven-enforcer-plugin</artifactId>
+                            <version>3.3.0</version>
+                            <dependencies>
+                                <dependency>
+                                    <groupId>org.codehaus.mojo</groupId>
+                                    <artifactId>extra-enforcer-rules</artifactId>
+                                    <version>1.6.2</version>
+                                </dependency>
+                            </dependencies>
+                            <configuration>
+                                <skip>true</skip>
+                                <rules>
+                                    <requireUpperBoundDeps>
+                                        <excludes combine.children="append">
+                                            <!-- TODO: fix this in Airlift resolver -->
+                                            <exclude>org.codehaus.plexus:plexus-utils</exclude>
+                                            <exclude>com.google.guava:guava</exclude>
+                                            <exclude>com.fasterxml.jackson.core:jackson-annotations</exclude>
+                                            <exclude>com.fasterxml.jackson.core:jackson-core</exclude>
+                                            <exclude>com.fasterxml.jackson.core:jackson-databind</exclude>
+                                        </excludes>
+                                    </requireUpperBoundDeps>
+                                </rules>
+                            </configuration>
+                        </plugin>
+
+                        <plugin>
+                            <groupId>org.basepom.maven</groupId>
+                            <artifactId>duplicate-finder-maven-plugin</artifactId>
+                            <configuration>
+                                <skip>true</skip>
+                                <ignoredClassPatterns combine.children="append">
+                                    <ignoredClassPattern>com.github.benmanes.caffeine.*</ignoredClassPattern>
+                                    <!-- Duplicate class is being brought in by commons-io & log4j-api -->
+                                    <ignoredClassPattern>META-INF.versions.9.module-info</ignoredClassPattern>
+                                    <!-- Duplicate class is being brought in by several netty dependencies-->
+                                    <ignoredClassPattern>META-INF.versions.11.module-info</ignoredClassPattern>
+                                    <!-- Ignore duplicate classes related to lucene-core and ranger-apache -->
+                                    <ignoredClassPattern>META-INF.versions.9.org.apache.lucene.*</ignoredClassPattern>
+                                </ignoredClassPatterns>
+
+                            </configuration>
+                        </plugin>
+
+                    </plugins>
+                </pluginManagement>
+            </build>
+
+        </profile>
+        <profile>
             <id>spark3</id>
 
             <activation>
@@ -3150,19 +3238,12 @@
             </activation>
 
             <properties>
-                <dep.pos.classloader.module-name.suffix>3</dep.pos.classloader.module-name.suffix>
+                <dep.spark.version>3.4.1-1</dep.spark.version>
             </properties>
 
-            <dependencyManagement>
-                <dependencies>
-                    <dependency>
-                        <groupId>com.facebook.presto.spark</groupId>
-                        <artifactId>spark-core</artifactId>
-                        <version>3.4.1-1</version>
-                        <scope>provided</scope>
-                    </dependency>
-                </dependencies>
-            </dependencyManagement>
+            <modules>
+                <module>presto-spark-classloader-spark3</module>
+            </modules>
 
             <build>
                 <pluginManagement>
