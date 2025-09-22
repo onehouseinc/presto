@@ -15,6 +15,7 @@
 package com.facebook.presto.hudi;
 
 import com.facebook.airlift.units.DataSize;
+import com.facebook.airlift.units.Duration;
 import com.facebook.presto.spi.ConnectorSession;
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.session.PropertyMetadata;
@@ -28,6 +29,7 @@ import static com.facebook.presto.hive.HiveSessionProperties.CACHE_ENABLED;
 import static com.facebook.presto.spi.StandardErrorCode.INVALID_SESSION_PROPERTY;
 import static com.facebook.presto.spi.session.PropertyMetadata.booleanProperty;
 import static com.facebook.presto.spi.session.PropertyMetadata.dataSizeProperty;
+import static com.facebook.presto.spi.session.PropertyMetadata.durationProperty;
 import static com.facebook.presto.spi.session.PropertyMetadata.integerProperty;
 import static java.lang.String.format;
 
@@ -41,6 +43,16 @@ public class HudiSessionProperties
     private static final String MINIMUM_ASSIGNED_SPLIT_WEIGHT = "minimum_assigned_split_weight";
     private static final String MAX_OUTSTANDING_SPLITS = "max_outstanding_splits";
     private static final String SPLIT_GENERATOR_PARALLELISM = "split_generator_parallelism";
+
+    static final String COLUMN_STATS_INDEX_ENABLED = "column_stats_index_enabled";
+    static final String RECORD_LEVEL_INDEX_ENABLED = "record_level_index_enabled";
+    static final String SECONDARY_INDEX_ENABLED = "secondary_index_enabled";
+    static final String PARTITION_STATS_INDEX_ENABLED = "partition_stats_index_enabled";
+    static final String COLUMN_STATS_WAIT_TIMEOUT = "column_stats_wait_timeout";
+    static final String RECORD_INDEX_WAIT_TIMEOUT = "record_index_wait_timeout";
+    static final String SECONDARY_INDEX_WAIT_TIMEOUT = "secondary_index_wait_timeout";
+    static final String METADATA_PARTITION_LISTING_ENABLED = "metadata_partition_listing_enabled";
+    static final String RESOLVE_COLUMN_NAME_CASING_ENABLED = "resolve_column_name_casing_enabled";
 
     @Inject
     public HudiSessionProperties(HudiConfig hudiConfig)
@@ -91,7 +103,52 @@ public class HudiSessionProperties
                         SPLIT_GENERATOR_PARALLELISM,
                         "Number of threads used to generate splits from partitions",
                         hudiConfig.getSplitGeneratorParallelism(),
-                        false));
+                        false),
+                booleanProperty(
+                        RECORD_LEVEL_INDEX_ENABLED,
+                        "Enable record level index for file skipping",
+                        hudiConfig.isRecordLevelIndexEnabled(),
+                        true),
+                booleanProperty(
+                        SECONDARY_INDEX_ENABLED,
+                        "Enable secondary index for file skipping",
+                        hudiConfig.isSecondaryIndexEnabled(),
+                        true),
+                booleanProperty(
+                        COLUMN_STATS_INDEX_ENABLED,
+                        "Enable column stats index for file skipping",
+                        hudiConfig.isColumnStatsIndexEnabled(),
+                        true),
+                booleanProperty(
+                        PARTITION_STATS_INDEX_ENABLED,
+                        "Enable partition stats index for file skipping",
+                        hudiConfig.isPartitionStatsIndexEnabled(),
+                        true),
+                durationProperty(
+                        COLUMN_STATS_WAIT_TIMEOUT,
+                        "Maximum timeout to wait for loading column stats",
+                        hudiConfig.getColumnStatsWaitTimeout(),
+                        false),
+                durationProperty(
+                        RECORD_INDEX_WAIT_TIMEOUT,
+                        "Maximum timeout to wait for loading record index",
+                        hudiConfig.getRecordIndexWaitTimeout(),
+                        false),
+                durationProperty(
+                        SECONDARY_INDEX_WAIT_TIMEOUT,
+                        "Maximum timeout to wait for loading secondary index",
+                        hudiConfig.getSecondaryIndexWaitTimeout(),
+                        false),
+                booleanProperty(
+                        METADATA_PARTITION_LISTING_ENABLED,
+                        "Enable metadata table based partition listing",
+                        hudiConfig.isMetadataPartitionListingEnabled(),
+                        false),
+                booleanProperty(
+                        RESOLVE_COLUMN_NAME_CASING_ENABLED,
+                        "Enable resolve column name casing",
+                        hudiConfig.isResolveColumnNameCasingEnabled(),
+                        true));
     }
 
     public List<PropertyMetadata<?>> getSessionProperties()
@@ -127,5 +184,55 @@ public class HudiSessionProperties
     public static int getSplitGeneratorParallelism(ConnectorSession session)
     {
         return session.getProperty(SPLIT_GENERATOR_PARALLELISM, Integer.class);
+    }
+
+    public static boolean isRecordLevelIndexEnabled(ConnectorSession session)
+    {
+        return session.getProperty(RECORD_LEVEL_INDEX_ENABLED, Boolean.class);
+    }
+
+    public static boolean isSecondaryIndexEnabled(ConnectorSession session)
+    {
+        return session.getProperty(SECONDARY_INDEX_ENABLED, Boolean.class);
+    }
+
+    public static boolean isColumnStatsIndexEnabled(ConnectorSession session)
+    {
+        return session.getProperty(COLUMN_STATS_INDEX_ENABLED, Boolean.class);
+    }
+
+    public static boolean isPartitionStatsIndexEnabled(ConnectorSession session)
+    {
+        return session.getProperty(PARTITION_STATS_INDEX_ENABLED, Boolean.class);
+    }
+
+    public static boolean isNoOpIndexEnabled(ConnectorSession session)
+    {
+        return !isRecordLevelIndexEnabled(session) && !isSecondaryIndexEnabled(session) && !isColumnStatsIndexEnabled(session);
+    }
+
+    public static Duration getColumnStatsWaitTimeout(ConnectorSession session)
+    {
+        return session.getProperty(COLUMN_STATS_WAIT_TIMEOUT, Duration.class);
+    }
+
+    public static Duration getRecordIndexWaitTimeout(ConnectorSession session)
+    {
+        return session.getProperty(RECORD_INDEX_WAIT_TIMEOUT, Duration.class);
+    }
+
+    public static Duration getSecondaryIndexWaitTimeout(ConnectorSession session)
+    {
+        return session.getProperty(SECONDARY_INDEX_WAIT_TIMEOUT, Duration.class);
+    }
+
+    public static boolean isMetadataPartitionListingEnabled(ConnectorSession session)
+    {
+        return session.getProperty(METADATA_PARTITION_LISTING_ENABLED, Boolean.class);
+    }
+
+    public static boolean isResolveColumnNameCasingEnabled(ConnectorSession session)
+    {
+        return session.getProperty(RESOLVE_COLUMN_NAME_CASING_ENABLED, Boolean.class);
     }
 }

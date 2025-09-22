@@ -17,12 +17,14 @@ package com.facebook.presto.hudi;
 import com.facebook.airlift.configuration.Config;
 import com.facebook.airlift.configuration.ConfigDescription;
 import com.facebook.airlift.units.DataSize;
+import com.facebook.airlift.units.Duration;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
 import static com.facebook.airlift.units.DataSize.Unit.MEGABYTE;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 public class HudiConfig
 {
@@ -33,6 +35,16 @@ public class HudiConfig
     private int maxOutstandingSplits = 1000;
     private int splitLoaderParallelism = 4;
     private int splitGeneratorParallelism = 4;
+
+    private boolean isColumnStatsIndexEnabled = true;
+    private boolean isRecordLevelIndexEnabled = true;
+    private boolean isSecondaryIndexEnabled = true;
+    private boolean isPartitionStatsIndexEnabled = true;
+    private Duration columnStatsWaitTimeout = new Duration(1, SECONDS);
+    private Duration recordIndexWaitTimeout = new Duration(2, SECONDS);
+    private Duration secondaryIndexWaitTimeout = new Duration(2, SECONDS);
+    private boolean metadataPartitionListingEnabled = true;
+    private boolean resolveColumnNameCasingEnabled;
 
     public boolean isMetadataTableEnabled()
     {
@@ -130,6 +142,127 @@ public class HudiConfig
     public HudiConfig setSplitLoaderParallelism(int splitLoaderParallelism)
     {
         this.splitLoaderParallelism = splitLoaderParallelism;
+        return this;
+    }
+
+    @Config("hudi.index.column-stats-index-enabled")
+    @ConfigDescription("Internal configuration to control whether column stats index is enabled for debugging/testing.")
+    public HudiConfig setColumnStatsIndexEnabled(boolean isColumnStatsIndexEnabled)
+    {
+        this.isColumnStatsIndexEnabled = isColumnStatsIndexEnabled;
+        return this;
+    }
+
+    public boolean isColumnStatsIndexEnabled()
+    {
+        return isColumnStatsIndexEnabled;
+    }
+
+    @Config("hudi.index.record-level-index-enabled")
+    @ConfigDescription("Internal configuration to control whether record level index is enabled for debugging/testing.")
+    public HudiConfig setRecordLevelIndexEnabled(boolean isRecordLevelIndexEnabled)
+    {
+        this.isRecordLevelIndexEnabled = isRecordLevelIndexEnabled;
+        return this;
+    }
+
+    public boolean isRecordLevelIndexEnabled()
+    {
+        return isRecordLevelIndexEnabled;
+    }
+
+    @Config("hudi.index.secondary-index-enabled")
+    @ConfigDescription("Internal configuration to control whether secondary index is enabled for debugging/testing.")
+    public HudiConfig setSecondaryIndexEnabled(boolean isSecondaryIndexEnabled)
+    {
+        this.isSecondaryIndexEnabled = isSecondaryIndexEnabled;
+        return this;
+    }
+
+    public boolean isSecondaryIndexEnabled()
+    {
+        return isSecondaryIndexEnabled;
+    }
+
+    @Config("hudi.index.partition-stats-index-enabled")
+    @ConfigDescription("Internal configuration to control whether partition stats index is enabled for debugging/testing.")
+    public HudiConfig setPartitionStatsIndexEnabled(boolean isPartitionStatsIndexEnabled)
+    {
+        this.isPartitionStatsIndexEnabled = isPartitionStatsIndexEnabled;
+        return this;
+    }
+
+    public boolean isPartitionStatsIndexEnabled()
+    {
+        return isPartitionStatsIndexEnabled;
+    }
+
+    @Config("hudi.index.record-index.wait-timeout")
+    @ConfigDescription("Maximum timeout to wait for loading record index, e.g. 1000ms, 20s")
+    public HudiConfig setRecordIndexWaitTimeout(Duration recordIndexWaitTimeout)
+    {
+        this.recordIndexWaitTimeout = recordIndexWaitTimeout;
+        return this;
+    }
+
+    @Config("hudi.index.column-stats.wait-timeout")
+    @ConfigDescription("Maximum timeout to wait for loading column stats, e.g. 1000ms, 20s")
+    public HudiConfig setColumnStatsWaitTimeout(Duration columnStatusWaitTimeout)
+    {
+        this.columnStatsWaitTimeout = columnStatusWaitTimeout;
+        return this;
+    }
+
+    @NotNull
+    public Duration getColumnStatsWaitTimeout()
+    {
+        return columnStatsWaitTimeout;
+    }
+
+    @NotNull
+    public Duration getRecordIndexWaitTimeout()
+    {
+        return recordIndexWaitTimeout;
+    }
+
+    @Config("hudi.index.secondary-index.wait-timeout")
+    @ConfigDescription("Maximum timeout to wait for loading secondary index, e.g. 1000ms, 20s")
+    public HudiConfig setSecondaryIndexWaitTimeout(Duration secondaryIndexWaitTimeout)
+    {
+        this.secondaryIndexWaitTimeout = secondaryIndexWaitTimeout;
+        return this;
+    }
+
+    @NotNull
+    public Duration getSecondaryIndexWaitTimeout()
+    {
+        return secondaryIndexWaitTimeout;
+    }
+
+    public boolean isMetadataPartitionListingEnabled()
+    {
+        return metadataPartitionListingEnabled;
+    }
+
+    @Config("hudi.metadata.partition-listing.enabled")
+    @ConfigDescription("Enables listing table partitions through the metadata table.")
+    public HudiConfig setMetadataPartitionListingEnabled(boolean metadataPartitionListingEnabled)
+    {
+        this.metadataPartitionListingEnabled = metadataPartitionListingEnabled;
+        return this;
+    }
+
+
+    public boolean isResolveColumnNameCasingEnabled()
+    {
+        return resolveColumnNameCasingEnabled;
+    }
+
+    @Config("hudi.table.resolve-column-name-casing.enabled")
+    @ConfigDescription("Reconcile column names between the catalog schema and the Hudi table to handle case differences")
+    public HudiConfig setResolveColumnNameCasingEnabled(boolean resolveColumnNameCasingEnabled)
+    {
+        this.resolveColumnNameCasingEnabled = resolveColumnNameCasingEnabled;
         return this;
     }
 }

@@ -16,8 +16,7 @@ package com.facebook.presto.hudi.split;
 
 import com.facebook.airlift.log.Logger;
 import com.facebook.airlift.units.DataSize;
-import com.facebook.presto.hive.metastore.ExtendedHiveMetastore;
-import com.facebook.presto.hive.metastore.MetastoreContext;
+import com.facebook.presto.hive.metastore.Partition;
 import com.facebook.presto.hive.util.AsyncQueue;
 import com.facebook.presto.hudi.HudiFile;
 import com.facebook.presto.hudi.HudiPartition;
@@ -25,26 +24,25 @@ import com.facebook.presto.hudi.HudiSplit;
 import com.facebook.presto.hudi.HudiTableHandle;
 import com.facebook.presto.hudi.HudiTableLayoutHandle;
 import com.facebook.presto.hudi.HudiTableType;
+import com.facebook.presto.hudi.query.HudiDirectoryLister;
 import com.facebook.presto.spi.ConnectorSession;
 import com.facebook.presto.spi.ConnectorSplit;
 import com.facebook.presto.spi.schedule.NodeSelectionStrategy;
 import com.google.common.collect.ImmutableList;
 import org.apache.hadoop.fs.Path;
-import org.apache.hudi.common.fs.FSUtils;
 import org.apache.hudi.common.model.FileSlice;
-import org.apache.hudi.common.table.view.HoodieTableFileSystemView;
 import org.apache.hudi.common.util.HoodieTimer;
 
+import java.util.Deque;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.stream.Stream;
 
-import static com.facebook.presto.hudi.HudiMetadata.toMetastoreContext;
 import static com.facebook.presto.hudi.HudiSessionProperties.getMinimumAssignedSplitWeight;
 import static com.facebook.presto.hudi.HudiSessionProperties.getStandardSplitWeightSize;
 import static com.facebook.presto.hudi.HudiSessionProperties.isSizeBasedSplitWeightsEnabled;
-import static com.facebook.presto.hudi.HudiSplitManager.getHudiPartition;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 
@@ -58,60 +56,56 @@ public class HudiPartitionSplitGenerator
 {
     private static final Logger log = Logger.get(HudiPartitionSplitGenerator.class);
 
-    private final ExtendedHiveMetastore metastore;
-    private final MetastoreContext metastoreContext;
     private final HudiTableLayoutHandle layout;
     private final HudiTableHandle table;
-    private final Path tablePath;
-    private final HoodieTableFileSystemView fsView;
+    private final HudiDirectoryLister hudiDirectoryLister;
     private final AsyncQueue<ConnectorSplit> asyncQueue;
-    private final Queue<String> concurrentPartitionQueue;
-    private final String latestInstant;
+    private final Queue<HudiPartition> concurrentPartitionQueue;
     private final HudiSplitWeightProvider splitWeightProvider;
+    private final Map<String, Partition> partitionMap;
+    private final boolean useIndex;
+
+    private boolean isRunning;
 
     public HudiPartitionSplitGenerator(
             ConnectorSession session,
-            ExtendedHiveMetastore metastore,
             HudiTableLayoutHandle layout,
-            HoodieTableFileSystemView fsView,
+            HudiDirectoryLister hudiDirectoryLister,
+            Map<String, Partition> partitionMap,
             AsyncQueue<ConnectorSplit> asyncQueue,
-            Queue<String> concurrentPartitionQueue,
-            String latestInstant)
+            Deque<HudiPartition> concurrentPartitionQueue,
+            boolean useIndex)
     {
-        this.metastore = requireNonNull(metastore, "metastore is null");
-        this.metastoreContext = toMetastoreContext(requireNonNull(session, "session is null"));
         this.layout = requireNonNull(layout, "layout is null");
-        this.table = layout.getTable();
-        this.tablePath = new Path(table.getPath());
-        this.fsView = requireNonNull(fsView, "fsView is null");
+        this.table = layout.getTableHandle();
+        this.hudiDirectoryLister = requireNonNull(hudiDirectoryLister, "fsView is null");
+        this.partitionMap = requireNonNull(partitionMap, "partitionMap is null");
         this.asyncQueue = requireNonNull(asyncQueue, "asyncQueue is null");
         this.concurrentPartitionQueue = requireNonNull(concurrentPartitionQueue, "concurrentPartitionQueue is null");
-        this.latestInstant = requireNonNull(latestInstant, "latestInstant is null");
         this.splitWeightProvider = createSplitWeightProvider(requireNonNull(session, "session is null"));
+        this.useIndex = useIndex;
+        this.isRunning = true;
     }
 
     @Override
     public void run()
     {
-        HoodieTimer timer = new HoodieTimer().startTimer();
-        while (!concurrentPartitionQueue.isEmpty()) {
-            String partitionName = concurrentPartitionQueue.poll();
-            if (partitionName != null) {
-                generateSplitsFromPartition(partitionName);
+        HoodieTimer timer = HoodieTimer.start();
+        while (isRunning || !concurrentPartitionQueue.isEmpty()) {
+            HudiPartition hudiPartition = concurrentPartitionQueue.poll();
+
+            if (hudiPartition != null && hudiPartition.getName() != null) {
+                generateSplitsFromPartition(hudiPartition);
             }
         }
         log.debug("Partition split generator finished in %d ms", timer.endTimer());
     }
 
-    private void generateSplitsFromPartition(String partitionName)
+    private void generateSplitsFromPartition(HudiPartition hudiPartition)
     {
-        HudiPartition hudiPartition = getHudiPartition(metastore, metastoreContext, layout, partitionName);
-        Path partitionPath = new Path(hudiPartition.getStorage().getLocation());
-        String relativePartitionPath = FSUtils.getRelativePartitionPath(tablePath, partitionPath);
-        Stream<FileSlice> fileSlices = HudiTableType.MOR.equals(table.getTableType()) ?
-                fsView.getLatestMergedFileSlicesBeforeOrOn(relativePartitionPath, latestInstant) :
-                fsView.getLatestFileSlicesBeforeOrOn(relativePartitionPath, latestInstant, false);
-        fileSlices.map(fileSlice -> createHudiSplit(table, fileSlice, latestInstant, hudiPartition, splitWeightProvider))
+        Stream<FileSlice> partitionFileSlices = hudiDirectoryLister.listStatus(hudiPartition, useIndex);
+
+        partitionFileSlices.map(fileSlice -> createHudiSplit(table, fileSlice, table.getLatestCommitTime(), hudiPartition, splitWeightProvider))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .forEach(asyncQueue::offer);
@@ -131,7 +125,7 @@ public class HudiPartitionSplitGenerator
         List<HudiFile> logFiles = slice.getLogFiles()
                 .map(logFile -> new HudiFile(logFile.getPath().toString(), 0, logFile.getFileSize()))
                 .collect(toImmutableList());
-        long logFilesSize = logFiles.size() > 0 ? logFiles.stream().map(HudiFile::getLength).reduce(0L, Long::sum) : 0L;
+        long logFilesSize = logFiles.isEmpty() ? 0L : logFiles.stream().map(HudiFile::getLength).reduce(0L, Long::sum);
         long sizeInBytes = baseFile != null ? baseFile.getLength() + logFilesSize : logFilesSize;
 
         return Optional.of(new HudiSplit(
@@ -153,5 +147,10 @@ public class HudiPartitionSplitGenerator
             return new SizeBasedSplitWeightProvider(minimumAssignedSplitWeight, standardSplitWeightSize);
         }
         return HudiSplitWeightProvider.uniformStandardWeightProvider();
+    }
+
+    public void stopRunning()
+    {
+        this.isRunning = false;
     }
 }
