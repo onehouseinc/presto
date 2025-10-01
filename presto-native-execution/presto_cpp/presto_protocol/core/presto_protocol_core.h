@@ -1761,6 +1761,30 @@ void to_json(json& j, const MergeJoinNode& p);
 void from_json(const json& j, MergeJoinNode& p);
 } // namespace facebook::presto::protocol
 namespace facebook::presto::protocol {
+struct NodeLoadMetrics {
+  double cpuUsedPercent = {};
+  double memoryUsedInBytes = {};
+  int numQueuedDrivers = {};
+  bool cpuOverload = {};
+  bool memoryOverload = {};
+};
+void to_json(json& j, const NodeLoadMetrics& p);
+void from_json(const json& j, NodeLoadMetrics& p);
+} // namespace facebook::presto::protocol
+namespace facebook::presto::protocol {
+enum class NodeState { ACTIVE, INACTIVE, SHUTTING_DOWN };
+extern void to_json(json& j, const NodeState& e);
+extern void from_json(const json& j, NodeState& e);
+} // namespace facebook::presto::protocol
+namespace facebook::presto::protocol {
+struct NodeStats {
+  NodeState nodeState = {};
+  std::shared_ptr<NodeLoadMetrics> loadMetrics = {};
+};
+void to_json(json& j, const NodeStats& p);
+void from_json(const json& j, NodeStats& p);
+} // namespace facebook::presto::protocol
+namespace facebook::presto::protocol {
 struct NodeVersion {
   String version = {};
 };
@@ -2164,6 +2188,27 @@ void to_json(json& j, const SortedRangeSet& p);
 void from_json(const json& j, SortedRangeSet& p);
 } // namespace facebook::presto::protocol
 namespace facebook::presto::protocol {
+enum class SpatialJoinType { INNER, LEFT };
+extern void to_json(json& j, const SpatialJoinType& e);
+extern void from_json(const json& j, SpatialJoinType& e);
+} // namespace facebook::presto::protocol
+namespace facebook::presto::protocol {
+struct SpatialJoinNode : public PlanNode {
+  SpatialJoinType type = {};
+  std::shared_ptr<PlanNode> left = {};
+  std::shared_ptr<PlanNode> right = {};
+  List<VariableReferenceExpression> outputVariables = {};
+  std::shared_ptr<RowExpression> filter = {};
+  std::shared_ptr<VariableReferenceExpression> leftPartitionVariable = {};
+  std::shared_ptr<VariableReferenceExpression> rightPartitionVariable = {};
+  std::shared_ptr<String> kdbTree = {};
+
+  SpatialJoinNode() noexcept;
+};
+void to_json(json& j, const SpatialJoinNode& p);
+void from_json(const json& j, SpatialJoinNode& p);
+} // namespace facebook::presto::protocol
+namespace facebook::presto::protocol {
 enum class Form {
   IF,
   NULL_IF,
@@ -2526,9 +2571,4 @@ struct WindowNode : public PlanNode {
 };
 void to_json(json& j, const WindowNode& p);
 void from_json(const json& j, WindowNode& p);
-} // namespace facebook::presto::protocol
-namespace facebook::presto::protocol {
-enum class NodeState { ACTIVE, INACTIVE, SHUTTING_DOWN };
-extern void to_json(json& j, const NodeState& e);
-extern void from_json(const json& j, NodeState& e);
 } // namespace facebook::presto::protocol

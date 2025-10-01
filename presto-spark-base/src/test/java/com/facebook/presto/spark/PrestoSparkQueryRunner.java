@@ -247,7 +247,8 @@ public class PrestoSparkQueryRunner
                         .build(),
                 ImmutableMap.of(),
                 dataDirectory,
-                ImmutableList.of(new NativeExecutionModule()),
+                ImmutableList.of(new NativeExecutionModule(
+                        Optional.of(ImmutableMap.of("hive", ImmutableMap.of("connector.name", "hive"))))),
                 DEFAULT_AVAILABLE_CPU_COUNT);
         ExtendedHiveMetastore metastore = queryRunner.getMetastore();
         if (!metastore.getDatabase(METASTORE_CONTEXT, "tpch").isPresent()) {
@@ -594,6 +595,8 @@ public class PrestoSparkQueryRunner
                         ImmutableSet.of(),
                         p.getUpdateType(),
                         getOnlyElement(getOnlyElement(rows).getFields()) == null ? OptionalLong.empty() : OptionalLong.of((Long) getOnlyElement(getOnlyElement(rows).getFields())),
+                        Optional.empty(),
+                        false,
                         ImmutableList.of());
             }
         }
@@ -606,6 +609,8 @@ public class PrestoSparkQueryRunner
                     ImmutableSet.of(),
                     Optional.empty(),
                     OptionalLong.empty(),
+                    Optional.empty(),
+                    false,
                     ImmutableList.of());
         }
         else {
@@ -616,6 +621,8 @@ public class PrestoSparkQueryRunner
                     ImmutableSet.of(),
                     Optional.empty(),
                     OptionalLong.empty(),
+                    Optional.empty(),
+                    false,
                     ImmutableList.of());
         }
     }

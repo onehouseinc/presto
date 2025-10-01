@@ -101,6 +101,7 @@ public class HudiMetadata
         }
 
         return new HudiTableHandle(
+                Optional.of(table),
                 table.getDatabaseName(),
                 table.getTableName(),
                 table.getStorage().getLocation(),
@@ -115,7 +116,11 @@ public class HudiMetadata
     }
 
     @Override
-    public List<ConnectorTableLayoutResult> getTableLayouts(ConnectorSession session, ConnectorTableHandle tableHandle, Constraint<ColumnHandle> constraint, Optional<Set<ColumnHandle>> desiredColumns)
+    public ConnectorTableLayoutResult getTableLayoutForConstraint(
+            ConnectorSession session,
+            ConnectorTableHandle tableHandle,
+            Constraint<ColumnHandle> constraint,
+            Optional<Set<ColumnHandle>> desiredColumns)
     {
         HudiTableHandle handle = (HudiTableHandle) tableHandle;
         Table table = getTable(session, tableHandle);
@@ -127,7 +132,7 @@ public class HudiMetadata
                 partitionColumns,
                 table.getParameters(),
                 constraint.getSummary()));
-        return ImmutableList.of(new ConnectorTableLayoutResult(layout, constraint.getSummary()));
+        return new ConnectorTableLayoutResult(layout, constraint.getSummary());
     }
 
     @Override
@@ -241,7 +246,7 @@ public class HudiMetadata
         return builder.build();
     }
 
-    static List<HudiColumnHandle> fromDataColumns(List<Column> dataColumns)
+    public static List<HudiColumnHandle> fromDataColumns(List<Column> dataColumns)
     {
         ImmutableList.Builder<HudiColumnHandle> builder = ImmutableList.builder();
         int id = 0;

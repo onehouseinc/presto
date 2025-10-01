@@ -763,6 +763,17 @@ class SystemConfig : public ConfigBase {
   // TODO: remove once text writer is fully rolled out
   static constexpr std::string_view kTextWriterEnabled{"text-writer-enabled"};
 
+  /// Enable the type char(n) with the same behavior as unbounded varchar.
+  /// char(n) type is not supported by parser when set to false.
+  static constexpr std::string_view kCharNToVarcharImplicitCast{
+    "char-n-to-varchar-implicit-cast"};
+
+  /// Enable BigintEnum and VarcharEnum types to be parsed and used in Velox. 
+  /// When set to false, BigintEnum or VarcharEnum types will throw an 
+  //  unsupported error during type parsing.
+  static constexpr std::string_view kEnumTypesEnabled{
+    "enum-types-enabled"};
+
   SystemConfig();
 
   virtual ~SystemConfig() = default;
@@ -1053,6 +1064,10 @@ class SystemConfig : public ConfigBase {
   uint64_t maxLocalExchangePartitionBufferSize() const;
 
   bool textWriterEnabled() const;
+
+  bool charNToVarcharImplicitCast() const;
+
+  bool enumTypesEnabled() const;
 };
 
 /// Provides access to node properties defined in node.properties file.
