@@ -24,10 +24,11 @@ on:
         default: "main"
 
 env:
-  # 1.0.2 is the hudi-presto-bundle version actually used by connector.name=hudi
-  # (plugin/hudi) in the 0.299 release — not the 0.14.0 bundle used by the
-  # legacy hive-hadoop2/iceberg connectors, which this image doesn't rely on.
-  DOCKERHUB_REPO: onehouse/presto-hudi-1.0.2
+  # No version suffix: the bundled hudi-presto-bundle version varies by which
+  # connector reads it (legacy hive-hadoop2/iceberg vs. the dedicated hudi
+  # connector) and drifts release to release — the image tag (presto-<version>)
+  # already identifies the Presto release.
+  DOCKERHUB_REPO: onehouse/presto-hudi
 
 jobs:
   build-and-push:
