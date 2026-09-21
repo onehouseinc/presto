@@ -1,11 +1,11 @@
-name: NetApp Cluster - Build & Push Presto Docker Image
+name: Build & Push Presto Docker Image
 
-# Builds the custom Presto image used to deploy Presto (with the Hudi/Iceberg
-# connectors) on the NetApp-provided k8s cluster, and publishes it to the
-# onehouse Docker Hub org instead of a personal account.
+# Builds the Presto image used for connector test/deploy clusters (with the
+# Hudi/Iceberg connectors) and publishes it to the onehouse Docker Hub org
+# instead of a personal account.
 #
 # The image itself is generic (bundles the official presto-server + presto-cli
-# release artifacts plus connector scaffolding); the cluster-specific catalog
+# release artifacts plus connector scaffolding); cluster-specific catalog
 # configs (Glue metastore, S3, etc.) are mounted at deploy time via the
 # presto-cfg ConfigMap in onehouseinc/infra-test-automation, not baked in here.
 on:
