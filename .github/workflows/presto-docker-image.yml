@@ -24,7 +24,11 @@ on:
         default: "main"
 
 env:
-  DOCKERHUB_REPO: onehouse/presto-hudi-0.14.0
+  # No version suffix: the bundled hudi-presto-bundle version varies by which
+  # connector reads it (legacy hive-hadoop2/iceberg vs. the dedicated hudi
+  # connector) and drifts release to release — the image tag (presto-<version>)
+  # already identifies the Presto release.
+  DOCKERHUB_REPO: onehouse/presto-hudi
 
 jobs:
   build-and-push:
